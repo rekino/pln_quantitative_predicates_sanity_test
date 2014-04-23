@@ -1,6 +1,8 @@
 import csv
 from mpl_toolkits.mplot3d import Axes3D
+from numpy import mean, std
 import matplotlib.pyplot as plt
+import numpy
 
 __author__ = 'ramin'
 
@@ -16,27 +18,32 @@ class DataContainer3DCsv(DataContainer):
         area_reader = csv.reader(open('data/area.csv', 'r'))
         population_reader = csv.reader(open('data/population.csv', 'r'))
 
-        gdp_max, area_max, population_max = 0, 0, 0
-
         for i in xrange(186):
             gdp_row = gdp_reader.next()
             key = gdp_row[1]
             gdp = float(gdp_row[2])
             area = float(area_reader.next()[2])
             population = float(population_reader.next()[2])
-            if gdp > gdp_max:
-                gdp_max = gdp
-            if area > area_max:
-                area_max = area
-            if population > population_max:
-                population_max = population
-            self[key] = {'area': area, 'gdp': gdp, 'population': population}
+            self[key] = {'area': area, 'gdp': gdp, 'population': population, 'label': 0}
 
         self.gdps, self.areas, self.populations = [], [], []
         for key in self:
-            self.gdps.append(self[key]['gdp'])# / gdp_max)
-            self.areas.append(self[key]['area'])# / area_max)
-            self.populations.append(self[key]['population'])# / population_max)
+            self.gdps.append(self[key]['gdp'])
+            self.areas.append(self[key]['area'])
+            self.populations.append(self[key]['population'])
+
+        self.gdps = numpy.array(self.gdps)
+        self.areas = numpy.array(self.areas)
+        self.populations = numpy.array(self.populations)
+
+        self.gdps_std = std(self.gdps)
+        self.areas_std = std(self.areas)
+        self.populations_std = std(self.populations)
+
+        self.gdps = numpy.log(self.gdps / self.gdps_std)
+        self.areas = numpy.log(self.areas / self.areas_std)
+        self.populations = numpy.log(self.populations / self.populations_std)
+
 
     def plot_1D(self, ax='gdps', bins=10):
         ys = sorted(self.__getattribute__(ax))
@@ -62,13 +69,15 @@ class DataContainer3DCsv(DataContainer):
         ax.set_ylabel('Area')
         ax.set_zlabel('Population')
 
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_zlim(0, 1)
-
-
         plt.show()
 
     def max(self, ax='gdps'):
         ys = self.__getattribute__(ax)
         return max(ys)
+
+    def zip(self):
+        return zip(self.gdps.T, self.areas.T, self.populations.T)
+
+    def get_data_of(self, country):
+        country = self[country]
+        return numpy.log(country['gdp'] / self.gdps_std), numpy.log(country['area'] / self.areas_std), numpy.log(country['population'] / self.populations_std)
